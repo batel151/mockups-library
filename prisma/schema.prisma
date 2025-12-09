@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Asset {
+  id          String   @id @default(cuid())
+  name        String
+  filename    String
+  url         String
+  oem         String
+  screenType  String
+  assetType   String   @default("Mockup") // "Mockup" or "Live Experience"
+  description String?
+  format      String
+  size        Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  figmaImport FigmaImport?
+  flowFrames  FlowFrame[]
+}
+
+// Track assets imported from Figma
+model FigmaImport {
+  id          String   @id @default(cuid())
+  fileId      String   // Figma file key
+  fileName    String
+  frameId     String   // Figma node ID
+  frameName   String
+  assetId     String   @unique
+  asset       Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+// Prototype flow - a sequence of connected frames
+model Flow {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  figmaFileId String?     // Source Figma file if imported
+  frames      FlowFrame[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+// Individual frame in a flow
+model FlowFrame {
+  id        String @id @default(cuid())
+  flowId    String
+  flow      Flow   @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  assetId   String
+  asset     Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  order     Int    // Position in the flow sequence
+  delay     Int    @default(1000) // Milliseconds before showing next frame
+}
